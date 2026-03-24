@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>世界の地図 — 縦断・横断宇宙図</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Shippori+Mincho:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07070e;
+  --cosmos: #050812;
+  --sky1: #0a0e1f;
+  --sky2: #0d1228;
+  --surface: #0c0c10;
+  --underground: #060609;
+  --water: #080f1a;
+
+  --c-star: #d4e0f8;
+  --c-galaxy: #8aaecc;
+  --c-train: #c9b46a;
+  --c-station: #a89060;
+  --c-city: #8a8078;
+  --c-school: #7a8898;
+  --c-safe: #8cc99c;
+  --c-danger: #c97b7b;
+  --c-super: #b08cc9;
+  --c-hidden: #7ac9c0;
+  --c-room: #c9a07a;
+  --c-white-room: #c8ccd8;
+  --c-water: #4a7ab8;
+  --c-mirror: #6a9acc;
+  --c-moth: #c9a07a;
+  --c-tunnel: #5a5a7a;
+
+  --text: #c8c4b8;
+  --text-dim: #6a6660;
+  --text-bright: #ece7d8;
+  --border: #1e1e2e;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Serif JP', serif; font-size: 13px; display: flex; flex-direction: column; }
+
+/* ── HEADER ── */
+.hdr { flex-shrink: 0; padding: 18px 28px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 20px; background: rgba(7,7,14,.95); }
+.hdr-title { font-family: 'Shippori Mincho', serif; font-size: 18px; font-weight: 700; color: var(--text-bright); }
+.hdr-sub { font-size: 10px; letter-spacing: .3em; color: var(--text-dim); }
+.view-toggle { margin-left: auto; display: flex; gap: 0; }
+.vbtn { padding: 7px 16px; font-size: 10px; letter-spacing: .2em; color: var(--text-dim); cursor: pointer; border: 1px solid var(--border); background: transparent; font-family: 'Noto Serif JP', serif; transition: all .2s; }
+.vbtn:first-child { border-radius: 2px 0 0 2px; }
+.vbtn:last-child { border-radius: 0 2px 2px 0; border-left: none; }
+.vbtn.active { color: var(--c-train); border-color: var(--c-train); background: rgba(201,180,106,.06); }
+
+/* ── LAYOUT ── */
+.body { flex: 1; display: flex; overflow: hidden; }
+.map-area { flex: 1; overflow: hidden; position: relative; }
+.panel { width: 280px; flex-shrink: 0; border-left: 1px solid var(--border); display: flex; flex-direction: column; background: rgba(8,8,16,.96); }
+.panel-hdr { padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 10px; letter-spacing: .25em; color: var(--text-dim); }
+.panel-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+.panel-empty { color: var(--text-dim); font-size: 12px; line-height: 1.9; }
+
+/* PANEL content */
+.p-name { font-family: 'Shippori Mincho', serif; font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.p-layer { font-size: 9px; letter-spacing: .25em; padding: 2px 8px; border: 1px solid; border-radius: 2px; display: inline-block; margin-bottom: 12px; }
+.p-meaning { font-size: 12px; color: var(--text); line-height: 1.9; margin-bottom: 12px; }
+.p-atmo { background: rgba(255,255,255,.03); border: 1px solid var(--border); padding: 10px 12px; font-size: 11.5px; color: var(--text-dim); line-height: 1.8; margin-bottom: 10px; border-radius: 2px; }
+.p-atmo-lbl { font-size: 9px; letter-spacing: .2em; color: var(--text-dim); margin-bottom: 4px; }
+.p-quote { border-left: 2px solid var(--border); padding: 8px 12px; font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: 8px; line-height: 1.7; }
+.p-relation { margin-top: 12px; font-size: 11px; color: var(--text-dim); }
+.p-relation-title { font-size: 9px; letter-spacing: .2em; margin-bottom: 6px; color: var(--text-dim); }
+.rel-tag { display: inline-block; padding: 2px 7px; border: 1px solid var(--border); border-radius: 2px; margin: 2px; font-size: 10px; cursor: pointer; transition: border-color .2s; }
+.rel-tag:hover { border-color: var(--c-train); }
+
+/* ── MAP CANVAS ── */
+#mapCanvas { width: 100%; height: 100%; cursor: grab; }
+#mapCanvas:active { cursor: grabbing; }
+
+/* location nodes on SVG */
+.loc-node { cursor: pointer; transition: opacity .2s; }
+.loc-node:hover { opacity: .75; }
+
+/* ── LEGENDS ── */
+.legend-bar { position: absolute; bottom: 12px; left: 14px; display: flex; flex-wrap: wrap; gap: 10px; pointer-events: none; opacity: .7; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 9px; color: var(--text-dim); }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* animations */
+@keyframes twinkle { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+@keyframes flow { 0% { stroke-dashoffset: 100; } 100% { stroke-dashoffset: 0; } }
+@keyframes ripple { 0%,100% { opacity: .3; } 50% { opacity: .7; } }
+@keyframes pulse-glow { 0%,100% { filter: drop-shadow(0 0 2px currentColor); } 50% { filter: drop-shadow(0 0 8px currentColor); } }
+
+.star-a { animation: twinkle 2.5s ease-in-out infinite; }
+.star-b { animation: twinkle 3.8s ease-in-out infinite .8s; }
+.star-c { animation: twinkle 4.2s ease-in-out infinite 1.6s; }
+.flow-path { animation: flow 4s linear infinite; }
+.ripple-el { animation: ripple 3s ease-in-out infinite; }
+.pulse-el { animation: pulse-glow 3s ease-in-out infinite; }
+
+/* VIEW TRANSITIONS */
+.view { width: 100%; height: 100%; position: absolute; top: 0; left: 0; transition: opacity .4s; }
+.view.hidden { opacity: 0; pointer-events: none; }
+
+/* ── MOBILE RESPONSIVENESS ── */
+@media (max-width: 768px) {
+  .hdr { flex-direction: column; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+  .view-toggle { margin-left: 0; width: 100%; }
+  .vbtn { flex: 1; text-align: center; }
+  .body { flex-direction: column; }
+  .map-area { flex: none; height: 55vh; width: 100%; }
+  .panel { width: 100%; flex: 1; border-left: none; border-top: 1px solid var(--border); }
+  .legend-bar { bottom: auto; top: 12px; } /* レジェンドがスマホで邪魔にならないよう調整 */
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">世界の地図</div>
+    <div class="hdr-sub">宇宙・地上・地下・内面の全位置関係図</div>
+  </div>
+  <div class="view-toggle">
+    <button class="vbtn active" id="btn-v" onclick="setView('vertical')">縦断図　宇宙軸</button>
+    <button class="vbtn" id="btn-h" onclick="setView('horizontal')">横断図　地理軸</button>
+  </div>
+</div>
+
+<div class="body">
+  <div class="map-area">
+    <svg id="vmap" class="view" viewBox="0 0 900 780" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <radialGradient id="cosmosGrad" cx="50%" cy="20%" r="70%">
+          <stop offset="0%" stop-color="#1a2448"/>
+          <stop offset="60%" stop-color="#080c1a"/>
+          <stop offset="100%" stop-color="#050812"/>
+        </radialGradient>
+        <radialGradient id="waterGrad" cx="50%" cy="70%" r="80%">
+          <stop offset="0%" stop-color="#0f1e38"/>
+          <stop offset="70%" stop-color="#06101e"/>
+          <stop offset="100%" stop-color="#030810"/>
+        </radialGradient>
+        <radialGradient id="castorGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#c8d8f8" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#8aaecc" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="polluxGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#f8e8c8" stop-opacity=".9"/>
+          <stop offset="100%" stop-color="#c9b46a" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="safeRoomGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#8cc99c" stop-opacity=".5"/>
+          <stop offset="100%" stop-color="#8cc99c" stop-opacity="0"/>
+        </radialGradient>
+        <radialGradient id="waterGlow" cx="50%" cy="30%" r="60%">
+          <stop offset="0%" stop-color="#4a7ab8" stop-opacity=".6"/>
+          <stop offset="100%" stop-color="#4a7ab8" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="glow3">
+          <feGaussianBlur stdDeviation="3" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow6">
+          <feGaussianBlur stdDeviation="6" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="blur2">
+          <feGaussianBlur stdDeviation="2"/>
+        </filter>
+        <linearGradient id="tunnelGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a1a2e"/>
+          <stop offset="100%" stop-color="#070710"/>
+        </linearGradient>
+        <linearGradient id="schoolGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0e1018"/>
+          <stop offset="100%" stop-color="#0a0c14"/>
+        </linearGradient>
+        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#050812"/>
+          <stop offset="100%" stop-color="#080d1c"/>
+        </linearGradient>
+        <linearGradient id="mirrorGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0f1e38" stop-opacity=".8"/>
+          <stop offset="100%" stop-color="#030810"/>
+        </linearGradient>
+        <clipPath id="schoolClip">
+          <rect x="320" y="258" width="200" height="330"/>
+        </clipPath>
+        <marker id="arrowG" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#c9b46a" opacity=".6"/>
+        </marker>
+        <marker id="arrowB" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#8aaecc" opacity=".6"/>
+        </marker>
+        <marker id="arrowR" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#c97b7b" opacity=".5"/>
+        </marker>
+      </defs>
+
+      <rect x="0" y="0" width="900" height="200" fill="url(#cosmosGrad)"/>
+      <rect x="0" y="200" width="900" height="80" fill="url(#skyGrad)"/>
+      <rect x="0" y="280" width="900" height="40" fill="#0c0c10"/>
+      <rect x="0" y="320" width="900" height="290" fill="url(#schoolGrad)"/>
+      <rect x="0" y="610" width="900" height="60" fill="url(#tunnelGrad)"/>
+      <rect x="0" y="670" width="900" height="110" fill="url(#waterGrad)"/>
+
+      <line x1="0" y1="200" x2="900" y2="200" stroke="#1e2848" stroke-width=".8" stroke-dasharray="6,3"/>
+      <line x1="0" y1="280" x2="900" y2="280" stroke="#2a2a3a" stroke-width="1.2"/>
+      <line x1="0" y1="610" x2="900" y2="610" stroke="#1a1a2a" stroke-width=".8" stroke-dasharray="3,4"/>
+      <line x1="0" y1="670" x2="900" y2="670" stroke="#1e3050" stroke-width="1.5"/>
+
+      <text x="14" y="30"  fill="#3a4a6a" font-size="8" letter-spacing="3" font-family="Noto Serif JP">宇宙層</text>
+      <text x="14" y="220" fill="#3a3a58" font-size="8" letter-spacing="3" font-family="Noto Serif JP">移動層</text>
+      <text x="14" y="298" fill="#3a3a3a" font-size="8" letter-spacing="3" font-family="Noto Serif JP">地上層</text>
+      <text x="14" y="370" fill="#2a3048" font-size="8" letter-spacing="3" font-family="Noto Serif JP">建物層</text>
+      <text x="14" y="625" fill="#2a2a40" font-size="8" letter-spacing="3" font-family="Noto Serif JP">地下層</text>
+      <text x="14" y="690" fill="#2a3860" font-size="8" letter-spacing="3" font-family="Noto Serif JP">水鏡層</text>
+
+      <line x1="880" y1="0" x2="880" y2="780" stroke="#1e1e2e" stroke-width=".5"/>
+      <text x="884" y="100"  fill="#2a3060" font-size="7" letter-spacing="1" font-family="Noto Serif JP" transform="rotate(90,884,100)">上昇・理想・美</text>
+      <text x="884" y="720" fill="#1e3050" font-size="7" letter-spacing="1" font-family="Noto Serif JP" transform="rotate(90,884,720)">反射・無意識・水</text>
+
+      <g fill="var(--c-star)">
+        <circle class="star-a" cx="68"  cy="22"  r="1.4"/>
+        <circle class="star-b" cx="155" cy="45"  r="1.0"/>
+        <circle class="star-a" cx="238" cy="18"  r="1.6"/>
+        <circle class="star-c" cx="312" cy="62"  r="0.9"/>
+        <circle class="star-a" cx="430" cy="28"  r="1.2"/>
+        <circle class="star-b" cx="520" cy="14"  r="1.5"/>
+        <circle class="star-c" cx="615" cy="52"  r="1.0"/>
+        <circle class="star-a" cx="720" cy="30"  r="1.3"/>
+        <circle class="star-b" cx="800" cy="70"  r="1.1"/>
+        <circle class="star-c" cx="858" cy="20"  r="0.8"/>
+        <circle class="star-c" cx="82"  cy="90"  r="0.7" opacity=".5"/>
+        <circle class="star-a" cx="190" cy="130" r="0.6" opacity=".4"/>
+        <circle class="star-b" cx="280" cy="105" r="0.8" opacity=".5"/>
+        <circle class="star-c" cx="480" cy="118" r="0.7" opacity=".4"/>
+        <circle class="star-a" cx="570" cy="82"  r="0.9" opacity=".5"/>
+        <circle class="star-b" cx="650" cy="145" r="0.6" opacity=".4"/>
+        <circle class="star-c" cx="760" cy="100" r="0.8" opacity=".5"/>
+        <circle class="star-a" cx="845" cy="148" r="0.7" opacity=".4"/>
+        <circle class="star-b" cx="46"  cy="165" r="0.5" opacity=".35"/>
+        <circle class="star-c" cx="360" cy="155" r="0.6" opacity=".35"/>
+      </g>
+
+      <ellipse cx="450" cy="90" rx="380" ry="28" fill="none" stroke="#2a3a5a" stroke-width="18" opacity=".25" filter="url(#blur2)"/>
+      <text x="400" y="78" fill="#2a4070" font-size="8" letter-spacing="2" font-family="Noto Serif JP" opacity=".6">天 の 川</text>
+      <text x="400" y="90" fill="#2a4060" font-size="7" font-family="Noto Serif JP" opacity=".4">（リアルゴールドがこぼしたやつ）</text>
+
+      <ellipse cx="582" cy="52" rx="36" ry="36" fill="url(#castorGlow)" class="ripple-el"/>
+      <ellipse cx="644" cy="38" rx="32" ry="32" fill="url(#polluxGlow)" class="ripple-el" style="animation-delay:.8s"/>
+      <circle class="pulse-el loc-node" cx="582" cy="52" r="5.5" fill="#c8d8f8" filter="url(#glow6)" onclick="showInfo('castor')" data-id="castor"/>
+      <circle class="pulse-el loc-node" cx="644" cy="38" r="4.8" fill="#f8e8c0" filter="url(#glow6)" onclick="showInfo('pollux')" data-id="pollux"/>
+      <text x="557" y="76" fill="#8aaecc" font-size="9" font-family="Noto Serif JP" text-anchor="middle">カストル</text>
+      <text x="657" y="60" fill="#c9b46a" font-size="9" font-family="Noto Serif JP" text-anchor="middle">ポルックス</text>
+      
+      <line x1="582" y1="52" x2="644" y2="38" stroke="#6a8aaa" stroke-width=".8" stroke-dasharray="3,2" opacity=".5"/>
+      <rect x="542" y="28" width="148" height="16" rx="2" fill="rgba(10,14,32,.7)" stroke="#2a3a58" stroke-width=".5"/>
+      <text x="616" y="40" text-anchor="middle" fill="#6a8aaa" font-size="8" letter-spacing="2" font-family="Noto Serif JP">双子座の二星　目的地</text>
+
+      <g class="star-b" opacity=".6">
+        <line x1="175" y1="48" x2="220" y2="80" stroke="#d0e0ff" stroke-width="1.2"/>
+        <circle cx="175" cy="48" r="2" fill="white" opacity=".8"/>
+        <text x="160" y="44" fill="#8aaecc" font-size="7" font-family="Noto Serif JP">流れ星（スマホ）</text>
+      </g>
+
+      <path d="M 50,268 Q 250,195 450,212 Q 620,225 820,200" stroke="#c9b46a" stroke-width="1.5" stroke-dasharray="8,4" fill="none" opacity=".35" marker-end="url(#arrowG)"/>
+
+      <g class="loc-node pulse-el" onclick="showInfo('train')" data-id="train">
+        <rect x="120" y="238" width="58" height="22" rx="4" fill="#1c1814" stroke="#c9b46a" stroke-width="1"/>
+        <rect x="122" y="240" width="54" height="8" rx="2" fill="rgba(201,180,106,.08)"/>
+        <rect x="126" y="242" width="9" height="5" rx="1" fill="rgba(180,190,220,.35)"/>
+        <rect x="138" y="242" width="9" height="5" rx="1" fill="rgba(180,190,220,.35)"/>
+        <rect x="150" y="242" width="9" height="5" rx="1" fill="rgba(180,190,220,.35)"/>
+        <rect x="162" y="242" width="9" height="5" rx="1" fill="rgba(180,190,220,.35)"/>
+        <text x="149" y="268" text-anchor="middle" fill="#c9b46a" font-size="9" font-family="Noto Serif JP">片道切符の電車</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('tunnel')" data-id="tunnel">
+        <rect x="295" y="230" width="90" height="36" rx="2" fill="#0a0a14" stroke="#5a5a7a" stroke-width=".8"/>
+        <rect x="297" y="232" width="86" height="32" rx="2" fill="rgba(6,6,10,.9)"/>
+        <text x="340" y="246" text-anchor="middle" fill="#5a5a7a" font-size="8" font-family="Noto Serif JP">200km</text>
+        <text x="340" y="258" text-anchor="middle" fill="#4a4a68" font-size="8" font-family="Noto Serif JP">トンネル</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('zone')" data-id="zone">
+        <ellipse cx="430" cy="248" rx="22" ry="14" fill="rgba(184,201,106,.1)" stroke="#b8c96a" stroke-width=".8" stroke-dasharray="4,2" class="ripple-el"/>
+        <text x="430" y="252" text-anchor="middle" fill="#b8c96a" font-size="8" font-family="Noto Serif JP">ゾーン</text>
+      </g>
+
+      <g fill="#1a1a20" opacity=".5">
+        <rect x="0" y="282" width="900" height="2" fill="#1c1c26"/>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('shibuya')" data-id="shibuya">
+        <rect x="50" y="285" width="110" height="32" rx="2" fill="rgba(14,12,12,.8)" stroke="#8a8078" stroke-width=".8"/>
+        <text x="105" y="299" text-anchor="middle" fill="#8a8078" font-size="9" font-family="Noto Serif JP">東京都渋谷区</text>
+        <text x="105" y="311" text-anchor="middle" fill="#5a5050" font-size="7" font-family="Noto Serif JP">諐の鳥の撮影地</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('station')" data-id="station">
+        <rect x="185" y="284" width="64" height="34" rx="2" fill="rgba(12,11,10,.85)" stroke="#a89060" stroke-width="1"/>
+        <text x="217" y="299" text-anchor="middle" fill="#a89060" font-size="9" font-family="Noto Serif JP">駅</text>
+        <text x="217" y="312" text-anchor="middle" fill="#6a5838" font-size="7" font-family="Noto Serif JP">閾値</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('path')" data-id="path">
+        <line x1="260" y1="296" x2="318" y2="296" stroke="#6a6050" stroke-width="2" stroke-dasharray="4,3"/>
+        <text x="290" y="310" text-anchor="middle" fill="#5a5048" font-size="8" font-family="Noto Serif JP">通学路</text>
+      </g>
+
+      <rect x="320" y="260" width="200" height="350" rx="3" fill="rgba(10,12,20,.9)" stroke="#2a2a42" stroke-width="1.5"/>
+
+      <g fill="#1e1e2e" stroke="#2a2a40" stroke-width=".5">
+        <rect x="322" y="320" width="196" height="4"/>
+        <rect x="322" y="375" width="196" height="4"/>
+        <rect x="322" y="430" width="196" height="4"/>
+        <rect x="322" y="485" width="196" height="4"/>
+        <rect x="322" y="540" width="196" height="4"/>
+      </g>
+
+      <rect x="318" y="540" width="204" height="20" rx="1" fill="#141420" stroke="#2a2a48" stroke-width="1"/>
+      <g stroke="#4a4a60" stroke-width=".7" fill="none">
+        <line x1="330" y1="540" x2="330" y2="530"/><line x1="345" y1="540" x2="345" y2="530"/>
+        <line x1="360" y1="540" x2="360" y2="530"/><line x1="375" y1="540" x2="375" y2="530"/>
+        <line x1="390" y1="540" x2="390" y2="530"/><line x1="405" y1="540" x2="405" y2="530"/>
+        <line x1="420" y1="540" x2="420" y2="530"/><line x1="435" y1="540" x2="435" y2="530"/>
+        <line x1="450" y1="540" x2="450" y2="530"/><line x1="465" y1="540" x2="465" y2="530"/>
+        <line x1="480" y1="540" x2="480" y2="530"/><line x1="495" y1="540" x2="495" y2="530"/>
+        <line x1="510" y1="540" x2="510" y2="530"/>
+      </g>
+
+      <text x="326" y="274" fill="#3a3a50" font-size="7" font-family="Noto Serif JP" letter-spacing="1">屋上</text>
+      <text x="326" y="308" fill="#3a3a50" font-size="7" font-family="Noto Serif JP" letter-spacing="1">4F  図書室・天窓</text>
+      <text x="326" y="364" fill="#3a3a50" font-size="7" font-family="Noto Serif JP" letter-spacing="1">3F  理科室・隠し森</text>
+      <text x="326" y="418" fill="#3a3a50" font-size="7" font-family="Noto Serif JP" letter-spacing="1">2F  家庭科・でかい目</text>
+      <text x="326" y="472" fill="#3a3a50" font-size="7" font-family="Noto Serif JP" letter-spacing="1">1F  玄関・事務室・教室</text>
+      <text x="326" y="528" fill="#3a3a50" font-size="7" font-family="Noto Serif JP" letter-spacing="1">B1F 地下通路・015・水路</text>
+
+      <g fill="none">
+        <rect x="333" y="296" width="12" height="18" rx="1" fill="rgba(90,130,200,.35)" stroke="#5a80c0" stroke-width=".5"/>
+        <rect x="349" y="296" width="12" height="18" rx="1" fill="rgba(90,130,200,.28)" stroke="#5a80c0" stroke-width=".5"/>
+        <rect x="365" y="296" width="12" height="18" rx="1" fill="rgba(90,130,200,.22)" stroke="#5a80c0" stroke-width=".5"/>
+        <rect x="460" y="353" width="12" height="18" rx="1" fill="rgba(100,180,120,.4)" stroke="#60b078" stroke-width=".5" class="ripple-el"/>
+        <rect x="476" y="353" width="12" height="18" rx="1" fill="rgba(100,180,120,.4)" stroke="#60b078" stroke-width=".5" class="ripple-el" style="animation-delay:.5s"/>
+        <rect x="333" y="408" width="9" height="14" rx="1" fill="rgba(40,40,60,.5)" stroke="#3a3a58" stroke-width=".5"/>
+        <rect x="346" y="408" width="9" height="14" rx="1" fill="rgba(40,40,60,.5)" stroke="#3a3a58" stroke-width=".5"/>
+        <rect x="355" y="463" width="9" height="14" rx="1" fill="rgba(50,50,80,.4)" stroke="#3a3a60" stroke-width=".5"/>
+        <rect x="368" y="463" width="9" height="14" rx="1" fill="rgba(50,50,80,.4)" stroke="#3a3a60" stroke-width=".5"/>
+      </g>
+
+      <line x1="420" y1="280" x2="420" y2="680" stroke="#4a7ab8" stroke-width=".8" stroke-dasharray="4,3" opacity=".45"/>
+      <text x="426" y="295" fill="#3a5a88" font-size="7" font-family="Noto Serif JP">天窓</text>
+      <text x="422" y="690" fill="#3a5a88" font-size="7" font-family="Noto Serif JP" text-anchor="middle">水面</text>
+
+      <ellipse cx="480" cy="407" rx="25" ry="18" fill="url(#safeRoomGlow)" class="ripple-el"/>
+
+      <ellipse cx="350" cy="395" rx="18" ry="12" fill="rgba(140,50,50,.08)" stroke="#c97b7b" stroke-width=".6" stroke-dasharray="3,2" class="pulse-el"/>
+      <text x="350" y="399" text-anchor="middle" fill="#7a4040" font-size="6" font-family="Noto Serif JP">でかい目</text>
+
+      <rect class="loc-node" x="320" y="260" width="200" height="60" fill="transparent" onclick="showInfo('roof_zone')" data-id="roof_zone"/>
+      <rect class="loc-node" x="320" y="320" width="200" height="55" fill="transparent" onclick="showInfo('lib_zone')" data-id="lib_zone"/>
+      <rect class="loc-node" x="320" y="375" width="200" height="55" fill="transparent" onclick="showInfo('science_zone')" data-id="science_zone"/>
+      <rect class="loc-node" x="320" y="430" width="200" height="55" fill="transparent" onclick="showInfo('floor2_zone')" data-id="floor2_zone"/>
+      <rect class="loc-node" x="320" y="485" width="200" height="55" fill="transparent" onclick="showInfo('floor1_zone')" data-id="floor1_zone"/>
+      <rect class="loc-node" x="320" y="540" width="200" height="50" fill="transparent" onclick="showInfo('b1f_zone')" data-id="b1f_zone"/>
+
+      <rect x="55" y="320" width="130" height="290" rx="3" fill="rgba(16,10,8,.9)" stroke="#2e2018" stroke-width="1" stroke-dasharray="5,3"/>
+      <text x="120" y="338" text-anchor="middle" fill="#4a3028" font-size="8" letter-spacing="2" font-family="Noto Serif JP">語り手の内面空間</text>
+
+      <g class="loc-node" onclick="showInfo('room')" data-id="room">
+        <rect x="65" y="346" width="110" height="50" rx="2" fill="rgba(20,12,8,.9)" stroke="#c9a07a" stroke-width=".8"/>
+        <text x="120" y="366" text-anchor="middle" fill="#c9a07a" font-size="10" font-family="Noto Serif JP">語り手の部屋</text>
+        <text x="120" y="380" text-anchor="middle" fill="#7a6050" font-size="8" font-family="Noto Serif JP">布団・大掃除の部屋</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('futon')" data-id="futon">
+        <ellipse cx="120" cy="430" rx="40" ry="18" fill="rgba(30,20,12,.95)" stroke="#8a7060" stroke-width=".8" stroke-dasharray="3,2"/>
+        <text x="120" y="434" text-anchor="middle" fill="#8a7060" font-size="9" font-family="Noto Serif JP">布団の中</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('white_room')" data-id="white_room">
+        <rect x="65" y="460" width="110" height="50" rx="2" fill="rgba(18,18,22,.95)" stroke="#c8ccd8" stroke-width=".8" stroke-dasharray="5,2"/>
+        <text x="120" y="480" text-anchor="middle" fill="#c8ccd8" font-size="10" font-family="Noto Serif JP">白い部屋</text>
+        <text x="120" y="495" text-anchor="middle" fill="#7a7a88" font-size="7" font-family="Noto Serif JP">もう耐えられない</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('scar')" data-id="scar">
+        <rect x="80" y="528" width="80" height="28" rx="2" fill="rgba(10,8,8,.95)" stroke="#6a4848" stroke-width=".6" stroke-dasharray="2,3"/>
+        <text x="120" y="545" text-anchor="middle" fill="#6a4848" font-size="8" font-family="Noto Serif JP">左腕の痕</text>
+      </g>
+
+      <line x1="185" y1="370" x2="318" y2="370" stroke="#4a3020" stroke-width=".6" stroke-dasharray="3,4" opacity=".5"/>
+      <line x1="185" y1="480" x2="318" y2="480" stroke="#4a4050" stroke-width=".6" stroke-dasharray="3,4" opacity=".3"/>
+
+      <rect x="560" y="324" width="120" height="220" rx="3" fill="rgba(10,10,18,.85)" stroke="#2a2a3a" stroke-width="1"/>
+      <text x="620" y="342" text-anchor="middle" fill="#3a3a50" font-size="8" font-family="Noto Serif JP">二号館・体育館</text>
+
+      <g class="loc-node" onclick="showInfo('b2_gym')" data-id="b2_gym">
+        <rect x="568" y="350" width="104" height="50" rx="2" fill="rgba(14,14,28,.9)" stroke="#b08cc9" stroke-width=".8"/>
+        <text x="620" y="368" text-anchor="middle" fill="#b08cc9" font-size="9" font-family="Noto Serif JP">二号館</text>
+        <text x="620" y="381" text-anchor="middle" fill="#6a5a88" font-size="7" font-family="Noto Serif JP">幽霊・生徒会室</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('gym_detail')" data-id="gym_detail">
+        <rect x="568" y="408" width="104" height="60" rx="2" fill="rgba(14,14,14,.9)" stroke="#b8c96a" stroke-width=".8"/>
+        <text x="620" y="428" text-anchor="middle" fill="#b8c96a" font-size="9" font-family="Noto Serif JP">体育館</text>
+        <text x="620" y="442" text-anchor="middle" fill="#7a8a3a" font-size="7" font-family="Noto Serif JP">後夜祭・蛾の選択</text>
+        <text x="620" y="455" text-anchor="middle" fill="#6a7a2a" font-size="7" font-family="Noto Serif JP">飛龍祭405日目</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('forest_detail')" data-id="forest_detail">
+        <rect x="568" y="476" width="104" height="60" rx="2" fill="rgba(8,18,10,.95)" stroke="#7ac9c0" stroke-width=".8" stroke-dasharray="4,2"/>
+        <text x="620" y="498" text-anchor="middle" fill="#7ac9c0" font-size="9" font-family="Noto Serif JP">隠し森</text>
+        <text x="620" y="512" text-anchor="middle" fill="#4a9a90" font-size="7" font-family="Noto Serif JP">ピアノの裏・3Fレベル</text>
+        <text x="620" y="525" text-anchor="middle" fill="#3a8a80" font-size="7" font-family="Noto Serif JP">ミニストップ・虎</text>
+      </g>
+
+      <line x1="520" y1="380" x2="558" y2="380" stroke="#2a2a42" stroke-width=".6"/>
+      <line x1="520" y1="437" x2="558" y2="437" stroke="#2a2a42" stroke-width=".6"/>
+      <line x1="520" y1="408" x2="558" y2="490" stroke="#1a2a1a" stroke-width=".6" stroke-dasharray="2,3"/>
+
+      <g class="loc-node" onclick="showInfo('grass')" data-id="grass">
+        <rect x="680" y="286" width="90" height="28" rx="2" fill="rgba(8,14,10,.9)" stroke="#6a9a6a" stroke-width=".8"/>
+        <text x="725" y="298" text-anchor="middle" fill="#6a9a6a" font-size="9" font-family="Noto Serif JP">人工芝グラウンド</text>
+        <text x="725" y="310" text-anchor="middle" fill="#4a7a4a" font-size="7" font-family="Noto Serif JP">最終対話の場</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('tunnel_under')" data-id="tunnel_under">
+        <rect x="280" y="620" width="200" height="36" rx="2" fill="#090912" stroke="#5a5a7a" stroke-width=".8"/>
+        <text x="380" y="636" text-anchor="middle" fill="#5a5a7a" font-size="9" font-family="Noto Serif JP">地下通路</text>
+        <text x="380" y="650" text-anchor="middle" fill="#3a3a58" font-size="7" font-family="Noto Serif JP">本館B1F → 駅 方面</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('water_pipe')" data-id="water_pipe">
+        <rect x="330" y="583" width="120" height="26" rx="2" fill="rgba(6,12,22,.9)" stroke="#3a5a7a" stroke-width=".8" stroke-dasharray="3,2"/>
+        <text x="390" y="597" text-anchor="middle" fill="#3a5a7a" font-size="8" font-family="Noto Serif JP">B1F水路（カバを誘う）</text>
+      </g>
+
+      <rect x="0" y="670" width="900" height="2" fill="#2a4a70" opacity=".6"/>
+
+      <g fill="#3a5a88" opacity=".4">
+        <circle class="star-c" cx="68"  cy="730" r="1.0"/>
+        <circle class="star-a" cx="238" cy="718" r="1.2"/>
+        <circle class="star-b" cx="430" cy="728" r="0.8"/>
+        <circle class="star-c" cx="520" cy="714" r="1.1"/>
+        <circle class="star-a" cx="720" cy="730" r="0.9"/>
+        <circle class="star-b" cx="800" cy="750" r="0.8"/>
+      </g>
+
+      <ellipse cx="582" cy="745" rx="24" ry="24" fill="url(#waterGlow)" class="ripple-el" style="animation-delay:1.2s" opacity=".5"/>
+      <circle cx="582" cy="748" r="3.5" fill="#3a5a88" opacity=".6" filter="url(#glow3)"/>
+      <circle cx="644" cy="736" r="3.0" fill="#4a5838" opacity=".6" filter="url(#glow3)"/>
+
+      <g class="loc-node pulse-el" onclick="showInfo('water_surface')" data-id="water_surface">
+        <rect x="350" y="678" width="140" height="50" rx="3" fill="rgba(15,30,60,.8)" stroke="#4a7ab8" stroke-width="1"/>
+        <ellipse cx="420" cy="703" rx="58" ry="12" fill="rgba(74,122,184,.15)" class="ripple-el"/>
+        <text x="420" y="697" text-anchor="middle" fill="#4a7ab8" font-size="9" font-family="Noto Serif JP">図書室の水面</text>
+        <text x="420" y="710" text-anchor="middle" fill="#2a4a70" font-size="7" font-family="Noto Serif JP">星空を反射する鏡</text>
+        <text x="420" y="722" text-anchor="middle" fill="#1a3050" font-size="7" font-family="Noto Serif JP">言語化不能の美</text>
+      </g>
+
+      <text x="235" y="690" fill="#2a4060" font-size="8" letter-spacing="2" font-family="Noto Serif JP" opacity=".7">鏡　上下の合わせ面</text>
+      <line x1="225" y1="670" x2="580" y2="670" stroke="#1e3050" stroke-width=".6" stroke-dasharray="5,4"/>
+
+      <path d="M 420,670 L 420,60" stroke="#2a4a80" stroke-width="1" stroke-dasharray="5,4" fill="none" marker-end="url(#arrowB)" opacity=".3"/>
+      <path d="M 520,340 Q 540,580 500,620" stroke="#6a2a2a" stroke-width=".8" stroke-dasharray="3,4" fill="none" marker-end="url(#arrowR)" opacity=".3"/>
+      <text x="548" y="490" fill="#4a1a1a" font-size="7" font-family="Noto Serif JP" opacity=".6">諐/カバの引力</text>
+      <path d="M 178,249 Q 380,190 578,54" stroke="#c9b46a" stroke-width=".8" stroke-dasharray="6,4" fill="none" marker-end="url(#arrowG)" opacity=".3"/>
+      <path d="M 279,638 L 248,296" stroke="#5a5a6a" stroke-width=".8" stroke-dasharray="4,4" fill="none" marker-end="url(#arrowB)" opacity=".35"/>
+      <path d="M 185,370 L 318,490" stroke="#4a3020" stroke-width=".7" stroke-dasharray="2,5" fill="none" opacity=".3"/>
+      <text x="230" y="445" fill="#3a2818" font-size="7" font-family="Noto Serif JP" opacity=".6" transform="rotate(-30,230,445)">通えていない</text>
+    </svg>
+
+    <svg id="hmap" class="view hidden" viewBox="0 0 900 620" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <radialGradient id="hCityGrad" cx="50%" cy="50%" r="70%">
+          <stop offset="0%" stop-color="#0f0f14"/>
+          <stop offset="100%" stop-color="#07070a"/>
+        </radialGradient>
+        <filter id="hglow3">
+          <feGaussianBlur stdDeviation="3" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <marker id="harrowG" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#c9b46a" opacity=".6"/>
+        </marker>
+        <marker id="harrowB" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#8aaecc" opacity=".5"/>
+        </marker>
+      </defs>
+
+      <rect width="900" height="620" fill="url(#hCityGrad)"/>
+      <g stroke="#0f0f18" stroke-width=".5" fill="none" opacity=".5">
+        <line x1="0" y1="40" x2="900" y2="40"/>
+        <line x1="0" y1="80" x2="900" y2="80"/>
+        <line x1="0" y1="120" x2="900" y2="120"/>
+        <line x1="0" y1="200" x2="900" y2="200"/>
+        <line x1="0" y1="280" x2="900" y2="280"/>
+        <line x1="0" y1="360" x2="900" y2="360"/>
+        <line x1="0" y1="440" x2="900" y2="440"/>
+        <line x1="0" y1="520" x2="900" y2="520"/>
+        <line x1="80"  y1="0" x2="80"  y2="620"/>
+        <line x1="220" y1="0" x2="220" y2="620"/>
+        <line x1="360" y1="0" x2="360" y2="620"/>
+        <line x1="500" y1="0" x2="500" y2="620"/>
+        <line x1="640" y1="0" x2="640" y2="620"/>
+        <line x1="780" y1="0" x2="780" y2="620"/>
+      </g>
+      
+      <text x="30" y="20" fill="#2a2a3a" font-size="8" letter-spacing="2" font-family="Noto Serif JP">W ←</text>
+      <text x="845" y="20" fill="#2a2a3a" font-size="8" letter-spacing="2" font-family="Noto Serif JP">→ E</text>
+      <text x="450" y="16" text-anchor="middle" fill="#2a2a3a" font-size="8" letter-spacing="4" font-family="Noto Serif JP">横断図 — 地理的位置関係</text>
+
+      <g class="loc-node" onclick="showInfo('white_room')" data-id="white_room">
+        <rect x="18" y="190" width="80" height="80" rx="3" fill="rgba(18,18,24,.95)" stroke="#c8ccd8" stroke-width=".8" stroke-dasharray="5,3"/>
+        <rect x="26" y="200" width="64" height="48" rx="2" fill="rgba(25,25,35,.9)" stroke="#8a8a9a" stroke-width=".5"/>
+        <rect x="34" y="210" width="20" height="16" rx="1" fill="rgba(200,205,220,.12)" stroke="#c8ccd8" stroke-width=".4"/>
+        <rect x="58" y="210" width="20" height="16" rx="1" fill="rgba(200,205,220,.12)" stroke="#c8ccd8" stroke-width=".4"/>
+        <text x="58" y="260" text-anchor="middle" fill="#c8ccd8" font-size="9" font-family="Noto Serif JP">白い部屋</text>
+        <text x="58" y="274" text-anchor="middle" fill="#6a6a78" font-size="7" font-family="Noto Serif JP">施設・隔離</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('room')" data-id="room">
+        <rect x="118" y="175" width="95" height="110" rx="3" fill="rgba(20,12,8,.95)" stroke="#c9a07a" stroke-width="1"/>
+        <rect x="126" y="185" width="79" height="60" rx="2" fill="rgba(26,16,10,.9)" stroke="#7a5030" stroke-width=".5"/>
+        <rect x="134" y="193" width="18" height="16" rx="1" fill="rgba(201,160,100,.18)" stroke="#c9a07a" stroke-width=".5" class="ripple-el"/>
+        <rect x="156" y="193" width="18" height="16" rx="1" fill="rgba(201,160,100,.18)" stroke="#c9a07a" stroke-width=".5"/>
+        <ellipse cx="165" cy="228" rx="22" ry="10" fill="rgba(100,70,40,.3)" stroke="#8a6040" stroke-width=".5"/>
+        <text x="165" y="242" text-anchor="middle" fill="#c9a07a" font-size="9" font-family="Noto Serif JP">語り手の部屋</text>
+        <text x="165" y="256" text-anchor="middle" fill="#7a5030" font-size="7" font-family="Noto Serif JP">布団・大掃除</text>
+        <text x="165" y="268" text-anchor="middle" fill="#5a3820" font-size="7" font-family="Noto Serif JP">食事がとれない場所</text>
+        <text x="165" y="284" text-anchor="middle" fill="#3a2818" font-size="7" font-family="Noto Serif JP">最後の砦</text>
+      </g>
+
+      <g fill="rgba(14,13,16,.8)" stroke="#2a2a30" stroke-width=".5">
+        <rect x="235" y="100" width="18" height="90"/>
+        <rect x="257" y="115" width="14" height="75"/>
+        <rect x="275" y="95" width="22" height="95"/>
+        <rect x="301" y="120" width="16" height="70"/>
+        <rect x="235" y="320" width="16" height="80"/>
+        <rect x="255" y="310" width="20" height="90"/>
+        <rect x="279" y="330" width="14" height="70"/>
+      </g>
+      <g class="loc-node" onclick="showInfo('shibuya')" data-id="shibuya">
+        <rect x="230" y="190" width="110" height="130" rx="3" fill="rgba(12,11,10,.5)" stroke="#8a8078" stroke-width=".8"/>
+        <text x="285" y="242" text-anchor="middle" fill="#8a8078" font-size="10" font-family="Noto Serif JP">東京都渋谷区</text>
+        <text x="285" y="256" text-anchor="middle" fill="#5a5048" font-size="7" font-family="Noto Serif JP">諐の鳥の撮影地</text>
+        <text x="285" y="270" text-anchor="middle" fill="#4a4038" font-size="7" font-family="Noto Serif JP">現実の都市</text>
+        <text x="285" y="284" text-anchor="middle" fill="#3a3028" font-size="7" font-family="Noto Serif JP">広告・週刊誌・ACの看板</text>
+        <text x="285" y="302" text-anchor="middle" fill="#2a2018" font-size="7" font-family="Noto Serif JP">（電車の中から見えるもの）</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('station')" data-id="station">
+        <rect x="352" y="210" width="60" height="70" rx="3" fill="rgba(14,12,10,.95)" stroke="#a89060" stroke-width="1"/>
+        <rect x="356" y="240" width="52" height="12" rx="1" fill="rgba(40,30,16,.8)" stroke="#7a6040" stroke-width=".5"/>
+        <rect x="362" y="248" width="10" height="5" rx="1" fill="rgba(180,160,100,.3)"/>
+        <text x="382" y="232" text-anchor="middle" fill="#a89060" font-size="10" font-family="Noto Serif JP">駅</text>
+        <text x="382" y="268" text-anchor="middle" fill="#6a5838" font-size="7" font-family="Noto Serif JP">閾値・出発点</text>
+        <text x="382" y="279" text-anchor="middle" fill="#4a3828" font-size="7" font-family="Noto Serif JP">現実との境界</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('tunnel_under')" data-id="tunnel_under">
+        <rect x="352" y="288" width="128" height="30" rx="2" fill="#080810" stroke="#5a5a7a" stroke-width=".8"/>
+        <text x="416" y="307" text-anchor="middle" fill="#5a5a7a" font-size="8" font-family="Noto Serif JP">地下通路（B1F → 駅）</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('path')" data-id="path">
+        <line x1="342" y1="255" x2="365" y2="255" stroke="#6a6050" stroke-width="3"/>
+        <line x1="246" y1="255" x2="338" y2="255" stroke="#4a4038" stroke-width="2" stroke-dasharray="5,3"/>
+        <text x="290" y="247" text-anchor="middle" fill="#4a4038" font-size="7" font-family="Noto Serif JP">通学路</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('school_main')" data-id="school_main">
+        <rect x="484" y="155" width="155" height="240" rx="3" fill="rgba(10,12,20,.95)" stroke="#3a3a5a" stroke-width="1.5"/>
+        <line x1="484" y1="200" x2="639" y2="200" stroke="#2a2a40" stroke-width=".5"/>
+        <line x1="484" y1="245" x2="639" y2="245" stroke="#2a2a40" stroke-width=".5"/>
+        <line x1="484" y1="290" x2="639" y2="290" stroke="#2a2a40" stroke-width=".5"/>
+        <line x1="484" y1="335" x2="639" y2="335" stroke="#2a2a40" stroke-width=".5"/>
+        
+        <rect x="592" y="255" width="10" height="14" rx="1" fill="rgba(100,180,120,.4)" stroke="#60b078" stroke-width=".5" class="ripple-el"/>
+        <rect x="605" y="255" width="10" height="14" rx="1" fill="rgba(100,180,120,.4)" stroke="#60b078" stroke-width=".5"/>
+        <rect x="492" y="170" width="12" height="16" rx="1" fill="rgba(90,130,200,.35)" stroke="#5a80c0" stroke-width=".5"/>
+        
+        <text x="561" y="178" text-anchor="middle" fill="#4a4a6a" font-size="8" font-family="Noto Serif JP" letter-spacing="1">本館</text>
+        <text x="561" y="225" text-anchor="middle" fill="#3a3a58" font-size="7" font-family="Noto Serif JP">4F 図書室</text>
+        <text x="561" y="270" text-anchor="middle" fill="#3a3a58" font-size="7" font-family="Noto Serif JP">3F 理科室</text>
+        <text x="561" y="315" text-anchor="middle" fill="#3a3a58" font-size="7" font-family="Noto Serif JP">1F 玄関・事務室</text>
+        <text x="561" y="360" text-anchor="middle" fill="#2a2a48" font-size="7" font-family="Noto Serif JP">B1F 地下通路</text>
+        <text x="561" y="388" text-anchor="middle" fill="#2a2a44" font-size="7" font-family="Noto Serif JP">クリックで縦断図参照</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('forest_detail')" data-id="forest_detail">
+        <rect x="486" y="78" width="152" height="74" rx="3" fill="rgba(8,18,10,.95)" stroke="#7ac9c0" stroke-width=".8" stroke-dasharray="4,2"/>
+        <text x="562" y="108" text-anchor="middle" fill="#7ac9c0" font-size="9" font-family="Noto Serif JP">隠し森（3Fレベル）</text>
+        <text x="562" y="122" text-anchor="middle" fill="#4a9a90" font-size="7" font-family="Noto Serif JP">ピアノの裏・ミニストップ</text>
+        <text x="562" y="136" text-anchor="middle" fill="#3a8a80" font-size="7" font-family="Noto Serif JP">虎（李徴）・カエル</text>
+        <text x="562" y="150" text-anchor="middle" fill="#2a7870" font-size="7" font-family="Noto Serif JP">本館から越境した空間</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('b2_gym')" data-id="b2_gym">
+        <rect x="650" y="155" width="80" height="120" rx="2" fill="rgba(10,10,18,.9)" stroke="#b08cc9" stroke-width=".8"/>
+        <text x="690" y="200" text-anchor="middle" fill="#b08cc9" font-size="9" font-family="Noto Serif JP">二号館</text>
+        <text x="690" y="215" text-anchor="middle" fill="#6a5a88" font-size="7" font-family="Noto Serif JP">幽霊廊下</text>
+        <text x="690" y="228" text-anchor="middle" fill="#5a4878" font-size="7" font-family="Noto Serif JP">生徒会室</text>
+        <text x="690" y="241" text-anchor="middle" fill="#4a3868" font-size="7" font-family="Noto Serif JP">体育倉庫</text>
+        <text x="690" y="268" text-anchor="middle" fill="#3a2858" font-size="7" font-family="Noto Serif JP">（渡り廊下で接続）</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('gym_detail')" data-id="gym_detail">
+        <rect x="650" y="285" width="80" height="80" rx="2" fill="rgba(14,14,12,.9)" stroke="#b8c96a" stroke-width=".8"/>
+        <text x="690" y="322" text-anchor="middle" fill="#b8c96a" font-size="9" font-family="Noto Serif JP">体育館</text>
+        <text x="690" y="338" text-anchor="middle" fill="#7a8a3a" font-size="7" font-family="Noto Serif JP">後夜祭会場</text>
+        <text x="690" y="352" text-anchor="middle" fill="#6a7a2a" font-size="7" font-family="Noto Serif JP">405日目</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('grass')" data-id="grass">
+        <rect x="486" y="400" width="152" height="60" rx="2" fill="rgba(8,14,10,.8)" stroke="#6a9a6a" stroke-width=".8"/>
+        <text x="562" y="428" text-anchor="middle" fill="#6a9a6a" font-size="9" font-family="Noto Serif JP">人工芝グラウンド</text>
+        <text x="562" y="443" text-anchor="middle" fill="#4a7a4a" font-size="7" font-family="Noto Serif JP">4章・最終対話・チューリップ</text>
+      </g>
+
+      <g class="loc-node" onclick="showInfo('train')" data-id="train">
+        <line x1="750" y1="100" x2="750" y2="520" stroke="#4a4030" stroke-width="4" opacity=".4"/>
+        <line x1="746" y1="100" x2="746" y2="520" stroke="#2a2018" stroke-width=".8"/>
+        <line x1="754" y1="100" x2="754" y2="520" stroke="#2a2018" stroke-width=".8"/>
+        <g stroke="#3a3020" stroke-width="3" opacity=".3">
+          <line x1="742" y1="140" x2="758" y2="140"/>
+          <line x1="742" y1="180" x2="758" y2="180"/>
+          <line x1="742" y1="220" x2="758" y2="220"/>
+          <line x1="742" y1="260" x2="758" y2="260"/>
+          <line x1="742" y1="300" x2="758" y2="300"/>
+          <line x1="742" y1="340" x2="758" y2="340"/>
+          <line x1="742" y1="380" x2="758" y2="380"/>
+          <line x1="742" y1="420" x2="758" y2="420"/>
+          <line x1="742" y1="460" x2="758" y2="460"/>
+          <line x1="742" y1="500" x2="758" y2="500"/>
+        </g>
+        <rect x="726" y="252" width="48" height="22" rx="3" fill="#1c1814" stroke="#c9b46a" stroke-width="1"/>
+        <rect x="730" y="255" width="9" height="6" rx="1" fill="rgba(180,190,220,.3)"/>
+        <rect x="742" y="255" width="9" height="6" rx="1" fill="rgba(180,190,220,.3)"/>
+        <rect x="754" y="255" width="9" height="6" rx="1" fill="rgba(180,190,220,.3)"/>
+        <text x="780" y="268" fill="#c9b46a" font-size="9" font-family="Noto Serif JP">電車</text>
+        <text x="780" y="280" fill="#7a6a3a" font-size="7" font-family="Noto Serif JP">→ 星へ</text>
+        <text x="750" y="115" text-anchor="middle" fill="#c9b46a" font-size="8" font-family="Noto Serif JP" opacity=".6">↑ カストル</text>
+        <text x="750" y="510" text-anchor="middle" fill="#5a5030" font-size="7" font-family="Noto Serif JP">↓ 現実方面</text>
+        <rect x="726" y="175" width="48" height="20" rx="1" fill="#0a0a14" stroke="#5a5a7a" stroke-width=".6"/>
+        <text x="750" y="189" text-anchor="middle" fill="#4a4a60" font-size="7" font-family="Noto Serif JP">200km</text>
+      </g>
+
+      <path d="M 213,240 Q 280,245 350,245" stroke="#5a4030" stroke-width=".8" stroke-dasharray="4,4" fill="none" marker-end="url(#harrowG)" opacity=".5"/>
+      <text x="280" y="237" fill="#3a2818" font-size="7" font-family="Noto Serif JP" opacity=".5">日常の経路</text>
+      <path d="M 414,250 Q 580,248 722,265" stroke="#c9b46a" stroke-width=".8" stroke-dasharray="6,4" fill="none" marker-end="url(#harrowG)" opacity=".4"/>
+      <text x="560" y="243" fill="#7a6a3a" font-size="7" font-family="Noto Serif JP" opacity=".5">片道切符</text>
+      <line x1="640" y1="222" x2="648" y2="222" stroke="#4a4058" stroke-width="2" opacity=".6"/>
+      <text x="644" y="218" text-anchor="middle" fill="#3a3048" font-size="7" font-family="Noto Serif JP">渡廊</text>
+      <line x1="116" y1="230" x2="100" y2="230" stroke="#4a4858" stroke-width=".6" stroke-dasharray="2,4" opacity=".4"/>
+      <text x="58" y="290" text-anchor="middle" fill="#2a2838" font-size="7" font-family="Noto Serif JP" opacity=".5">隔離</text>
+      <line x1="562" y1="155" x2="562" y2="152" stroke="#4a9a90" stroke-width=".8" stroke-dasharray="2,2" opacity=".6"/>
+    </svg>
+
+    <div class="legend-bar" id="legendBar">
+      <div class="leg"><div class="leg-dot" style="background:#c9b46a"></div>移動・電車</div>
+      <div class="leg"><div class="leg-dot" style="background:#8aaecc"></div>星・水鏡</div>
+      <div class="leg"><div class="leg-dot" style="background:#8cc99c"></div>安全</div>
+      <div class="leg"><div class="leg-dot" style="background:#c97b7b"></div>危険</div>
+      <div class="leg"><div class="leg-dot" style="background:#b08cc9"></div>怪異</div>
+      <div class="leg"><div class="leg-dot" style="background:#7ac9c0"></div>隠秘</div>
+      <div class="leg"><div class="leg-dot" style="background:#c9a07a"></div>内面</div>
+      <div class="leg"><div class="leg-dot" style="background:#c8ccd8"></div>白い部屋</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr">LOCATION INFO</div>
+    <div class="panel-body" id="panelBody">
+      <div class="panel-empty">
+        場所をクリックすると<br>詳細が表示されます。<br><br>
+        縦断図：宇宙軸に沿った<br>上下の位置関係<br><br>
+        横断図：地理的な<br>水平の位置関係
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const INFO = {
+  castor: {
+    name:'カストル', color:'#8aaecc',
+    layer:'宇宙層 — 双子座・死すべき側の星',
+    meaning:'双子座の二星のうち、死すべき人間（カストル）の側。ギリシャ神話では馬術の名手だが不死ではない。語り手に対応する「有限の存在」の象徴。電車の目的地として設定されているが、到達したかどうかは描かれない——目的地とは到達のためではなく、向かうための概念。',
+    atmo:'深宇宙の静寂。重力もなく時間もなく、ただ光だけがある。地上の苦しみがここまで届かない場所。しかし死すべき者が行き着く星でもある。',
+    quote:'カストルとポルックスに向かうように私に告げた。今はどこもかしこもコンプライアンスに縛られていて、私とかリアルゴールドみたいなのが行けるのはそこぐらいしかない。',
+    relations:['pollux','train','water_surface']
+  },
+  pollux: {
+    name:'ポルックス', color:'#c9b46a',
+    layer:'宇宙層 — 双子座・不死の側の星',
+    meaning:'双子座の二星のうち、不死（ポルックス）の側。リアルゴールドに対応する「永続する美・文学の理想」の象徴。二星は対になって存在し、片方なしには成り立たない——「現実」と「文学」の相互依存関係を体現する。カストルとポルックスが同時に目的地であることは、語り手とリアルゴールドが共に一つの方向を向いていることを示す。',
+    atmo:'金色の輝き。神話の中で最も忠実な双子の片割れ。兄弟のために永遠を半分分かつことを選んだ者。その光は揺るがない。',
+    quote:'カストルとポルックスに向かうように私に告げた。',
+    relations:['castor','train','galaxy']
+  },
+  galaxy: {
+    name:'天の川（銀河）', color:'#6a8aaa',
+    layer:'宇宙層 — 銀河',
+    meaning:'「天の川ってリアルゴールドこぼしたやつなんじゃないかな？」——この一文が銀河の意味を決定する。リアルゴールド（人工的な活力・金色）がこぼれて宇宙に散らばったもの。文学的な美・創作のエネルギーが宇宙規模に拡散した姿。同時に「こぼれた」という偶発性——美は意図されたものではなく、こぼれた残滓である、という世界観。',
+    atmo:'ぼんやりと帯状に広がる光の集合。近づこうとすると消える。触れられない美の典型。',
+    quote:'天の川ってリアルゴールドこぼしたやつなんじゃないかな？',
+    relations:['castor','pollux','water_surface']
+  },
+  train: {
+    name:'片道切符の電車', color:'#c9b46a',
+    layer:'移動層 — 現実と宇宙の狭間',
+    meaning:'片道切符を手にして乗り込む電車。汗と困惑で折れた切符——引き返す意志がない、あるいは引き返せない旅。乗っているのは語り手とリアルゴールド（とゾーン）だけ。「余計な人格も桃色の残像もない、また罪も愛もない、ただの非存在の塊」が電車に乗っている——それはまだ何者でもない状態からの出発。200kmトンネルで変容が起き、ゾーンが現れる閾値空間。',
+    atmo:'夜の電車の車内。脱毛の広告、週刊誌の見出し、ACのポスター。現実の侵食。窓の外は霧か宇宙か判別できない。温度は少し低い。',
+    quote:'あなたが夢になるんじゃなくて、夢があなたになるの。3分待つと電車が来る。風が運んでくる霧を濾過して、その列車は走る。',
+    relations:['castor','tunnel','zone','station']
+  },
+  tunnel: {
+    name:'200kmのトンネル', color:'#5a5a7a',
+    layer:'移動層 — 変容の暗闇',
+    meaning:'長さ200kmという超現実的なトンネル。通信が途絶え、スマホを窓から投げ落とす（流れ星になる）。煤が大量に入る——現実の汚染。トンネルを抜けるとリアルゴールドが黄緑色（ゾーン）に変わっている。これは「理想が現実と混ざり合う変容の暗闇」。前作のカバが水に引き寄せられる地下水路と対応する——どちらも「見えない中で何かが変わる場所」。',
+    atmo:'完全な暗闇。轟音と振動。外が見えない。自分と同行者以外の何もない閉鎖空間。時間の感覚が失われる。200kmという非現実的な長さは、変容に必要な「無の時間」の長さ。',
+    quote:'急に通信が悪くなって、スマホから目を離す。もうめんどくさくなって、癇を起こして窓を開けてスマホを投げ落としてしまった。あれが流れ星になるんだしいいじゃん！',
+    relations:['train','zone','station']
+  },
+  zone: {
+    name:'ゾーン', color:'#b8c96a',
+    layer:'移動層→地上 — 現実の番人',
+    meaning:'トンネルを抜けた後に現れる黄緑色の存在。ジャケットの裾を引っ張って急停車ボタンを押させない。「気味のいい現実」という言葉を使う。前作の「花子さん的存在」が警告者だったのに対し、ゾーンは「現実に留める者」。黄緑＝青（理想・リアルゴールド）と黄（現実・地上）の混合色。リアルゴールドが現実化したとき黄緑になるという色彩論。「レッドブルにして」という言葉はリアルゴールドへの批判——代替可能な存在への問い。',
+    atmo:'曖昧で不確かな存在感。形をはっきり持たない。裾を引っ張る感触だけがある。',
+    quote:'ゾーンがジャケットの裾を引っ張る。せめてレッドブルにして。',
+    relations:['tunnel','train','station']
+  },
+  shibuya: {
+    name:'東京都渋谷区', color:'#8a8078',
+    layer:'地上層 — 現実の都市',
+    meaning:'唯一実名で登場する現実の地名。「諐の鳥」「諐の皮膚」「諐の微生物」という詩的イメージの撮影地として言及される。つまり渋谷区の街並みの中に「諐（終わり・罪）」が写真として切り取られた瞬間が存在する。現実の都市が「諐」の具体的な器になっている——抽象的な概念が地理的に固定される唯一の場所。電車から見える広告（脱毛・週刊誌・AC）もこの都市圏の現実を構成する。',
+    atmo:'昼も夜も人が動く都市。しかし語り手には生きた人間の声として届かない。看板と広告が意味を失って流れていく。気が滅入る。通学路もこの街の一部。',
+    quote:'東京都渋谷区で撮影　それが「諐」の鳥　それが「諐」の皮膚　それが「諐」の微生物',
+    relations:['station','path','room']
+  },
+  station: {
+    name:'駅', color:'#a89060',
+    layer:'地上層 — 閾値空間',
+    meaning:'地下通路を通って向かう場所。電車への出発点。閾値（しきいち）——内的世界（学校）と外的旅（電車）の境界。この駅から出る電車は「片道切符」しか存在しない。駅そのものはどこにでもある日常的な空間だが、この物語においては「一方通行の境界」として機能する。地下通路と接続しており、学校の地下と街がここで繋がる。',
+    atmo:'夜の無人駅。発車案内板だけが光っている。人の気配はない。改札を通る音だけが響く。プラットホームの風が冷たい。',
+    quote:'地下通路を通って駅へと向かう。片道切符を手にしている。汗と困惑で折れてぐちゃぐちゃ。',
+    relations:['tunnel_under','train','path','school_main']
+  },
+  path: {
+    name:'通学路', color:'#6a6050',
+    layer:'地上層 — 日常の道',
+    meaning:'「通学路で買わなきゃダメ」という記述から、ホットスナックを売るコンビニが通学路にある。語り手が「通えていない学校」に向かうはずの道。日常と非日常の間をつなぐ最も普通の経路。この道を歩くことと学校の夜に侵入することは、時間軸が異なる同じ行為かもしれない。通学路の記述は「普通の学生生活」への未練または距離感を示す。',
+    atmo:'昼間の普通の街並み。セブンイレブンやローソン。学生が歩いている。語り手はそこを歩けているかどうかが曖昧なまま。',
+    quote:'ただホットスナックは置いてないので、そっちが欲しい場合はやっぱり通学路で買わなきゃダメ。',
+    relations:['station','shibuya','school_main']
+  },
+  room: {
+    name:'語り手の部屋', color:'#c9a07a',
+    layer:'内面層 — 現実の最小単位',
+    meaning:'「大掃除をした（素晴らしい！えらい！）」「ちょっとだけ別の人生を生きてみたくていくつも物を捨てた」「お布団被っても寒い冬」——唯一の現実の住処。食事がとれず、吐く場所。進級が怪しい状態でいる場所。「リアル世界のお布団だけだった」という記述は、全ての創作・夢・旅が終わった後に帰ってくる最後の物理的な場所がここであることを示す。しかし布団でも寒い冬——この部屋も完全な安全地帯ではない。',
+    atmo:'薄暗い。片付いた後の静けさ。ゴミ袋がいくつかある。冷気が漂う。布団だけが温かいが、それも心臓の音で揺れている気がする。',
+    quote:'大掃除をした。（素晴らしい！！えらい！！）ちょっとだけ別の人生を生きてみたくていくつも物を捨てた。リアル世界のお布団だけだった。',
+    relations:['white_room','futon','school_main','station']
+  },
+  futon: {
+    name:'布団の中', color:'#8a7060',
+    layer:'内面層最深部 — 現実の最後の砦',
+    meaning:'「リアル世界のお布団だけだった」——全ての創作が語り手を救えなかったとき、最後に残ったのが布団。最も原始的な自己保護の形。しかし「お布団被っても寒い冬」という詩があり、最後の砦も完全ではない。物語を通じて「安全な場所」が次第に内側に向かっていくとき、布団はその最終地点。それでも存在している場所。',
+    atmo:'重さ。暗さ。自分の呼吸の音だけ。外の音が少し遠くなる。寒さが完全には消えない。',
+    quote:'お布団被っても寒い冬。リアル世界のお布団だけだった。',
+    relations:['room','white_room']
+  },
+  white_room: {
+    name:'白い部屋', color:'#c8ccd8',
+    layer:'内面層 — 臨界の空間（考察）',
+    meaning:'「白い部屋はこれ以上耐えられません。ので、よろしくお願いします」——直接的な記述がある。白い部屋とは：病院の個室、精神科病棟、あるいは自室が白く感じられるほど無機質になった状態かもしれない。学校にも家にも行けない状態で、白い部屋だけが物理的に存在する場所である可能性。「これ以上耐えられない」という宣言は、この空間を脱出するために「とびきり面白いこと」が必要だという文脈で語られる。白＝色のない空間＝アイデンティティを剥ぎ取られた場所。',
+    atmo:'消毒液の匂い。無地の壁。時間の経過が感じられない。窓があっても外が見えない気がする。足音だけが廊下から聞こえる。',
+    quote:'白い部屋はこれ以上耐えられません。ので、よろしくお願いします。今年中に、私には予想だにしない、とびきり面白いことが起こります。そうでないと詰みます。',
+    relations:['room','futon','school_main']
+  },
+  scar: {
+    name:'左腕の痕', color:'#6a4848',
+    layer:'内面層 — 身体に刻まれた壁',
+    meaning:'「私と君の間には壁があって。左腕の、どうしようもない痕みたいな。その言葉をカイロみたいに握りしめて君の幸せを本気で願ってる」——壁とは観念的なものではなく、左腕の傷跡として物理的に存在する。痕は消えない。しかし「カイロみたいに」温かくも握れる。この矛盾が語り手の核心：消えない傷が同時に温もりである。壁の最も具体的な形。',
+    atmo:'見えない。しかし常にそこにある。冬の空気に触れると少し感じる。',
+    quote:'私と君の間には壁があって。左腕の、どうしようもない痕みたいな。その言葉をカイロみたいに握りしめて君の幸せを本気で願ってる。',
+    relations:['room','white_room']
+  },
+  tunnel_under: {
+    name:'地下通路', color:'#5a5a7a',
+    layer:'地下層 — 接続の暗路',
+    meaning:'本館B1Fから駅へと続く地下通路。物語の最初の移動の場所（刺蛾結社通信の冒頭）。地下であることで地上の「普通の世界」から隔離された経路。駅への片道切符の旅はここから始まる。前作では015号室やB1F水路と同じ地下空間を共有しており、カバが引き寄せられた水路の音も地下から聞こえた。地下通路は「表の道ではない経路」——普通の学生は使わない路地的存在。',
+    atmo:'蛍光灯が一部切れている。足音が響く。電車の振動が床から伝わってくる。壁に剥がれかけたポスター。',
+    quote:'地下通路を通って駅へと向かう。片道切符を手にしている。汗と困惑で折れてぐちゃぐちゃ。',
+    relations:['station','b1f_zone','water_pipe']
+  },
+  water_pipe: {
+    name:'B1F水路（カバを誘う水）', color:'#3a5a7a',
+    layer:'地下層 — 無意識の流れ',
+    meaning:'「地面が揺れて、水の音がした。今いるところより低いところで水が流れているようだった。彼ら（カバ）は水の元に歩いて行った」——カバという精神的崩壊の具現が水に引き寄せられる。水は無意識・解放・流失の象徴。地下の最も低い場所を流れる水は、図書室の水面（星空を映す）と垂直軸上で繋がっている。下の水が星を映すとき、カバが水に向かうことは、崩壊衝動が美に向かう逆説的な構造を示す。',
+    atmo:'暗い。水の流れる音だけが聞こえる。温度が低い。床が湿っている。カバが去った後の静寂。',
+    quote:'地面が揺れて、水の音がした。今いるところより低いところで水が流れているようだった。彼らは水の元に歩いて行った。',
+    relations:['b1f_zone','water_surface','tunnel_under']
+  },
+  water_surface: {
+    name:'図書室の水面', color:'#4a7ab8',
+    layer:'水鏡層 — 宇宙の反射面',
+    meaning:'「吹き抜けになっていて、下は水が張られて、星空をキラキラと反射している。言語でその美しさを表現することができない」——この世界全体の構造的な鍵となる場所。上の星空（カストルとポルックス）を下の水が映す鏡。つまり宇宙層と水鏡層は上下で同じものを映している。天窓（屋上↔図書室）が垂直軸を繋ぎ、水面がそれを反射する。「言語化不能の美」——創作論の核である「言語の限界」がここで最初に示される。',
+    atmo:'静かな水面。揺れると星が砕ける。揺れなければ星になる。吹き抜けの高さから見下ろすと、宇宙に落ちていくような錯覚がある。',
+    quote:'吹き抜けになっていて、下は水が張られて、星空をキラキラと反射している。言語でその美しさを表現することができない。',
+    relations:['lib_zone','castor','water_pipe','galaxy']
+  },
+  roof_zone: {
+    name:'屋上', color:'#c97b7b',
+    layer:'建物層最上部 — 死に最も近い場所',
+    meaning:'「終点は屋上だった」「なんで学校の屋上に入っちゃいけないかというと、最も死に近づいているから」——物語の物理的終点。片道切符の旅の最終地点として示唆される。しかし語り手はリアルゴールドの手を取り、屋上には至らなかった。「ただ…星が見たいもの」——危険な場所への引力は死への衝動ではなく、星（美・理想）への欲望として語られる。天窓が屋上と図書室を繋ぐ——屋上から見れば、すぐ下に星空の水面がある。',
+    atmo:'風が強い。周囲を囲むフェンス。夜の空が全方位に広がる。電波塔の点滅。足元は固くて冷たい。ここだけ空が近い。',
+    quote:'終点は屋上だった。なんで学校の屋上に入っちゃいけないかというと、最も死に近づいているから。ただ…星が見たいもの。フィボナッチ数列の最後の桁数を見るまで死ねない。',
+    relations:['lib_zone','water_surface','castor']
+  },
+  lib_zone: {
+    name:'4F 図書室・天窓', color:'#8aaecc',
+    layer:'建物層4F — 言語化不能の美の器',
+    meaning:'015号室の奥扉を開けると辿り着く。吹き抜け・水面・天窓が垂直軸を構成する。言語が機能を停止する唯一の場所——全作品を通じて語り手が言語化を断念した唯一の瞬間。リアルゴールドがここで笑っている（夢から覚めたらリアルゴールドに戻った）。図書室は本（言語）で満たされているにもかかわらず、言語を超えた美が生まれる逆説の空間。',
+    atmo:'静けさの中に水の揺れる音。本棚が吹き抜けを囲む。夜の図書室に誰もいない。星が床に広がっている。',
+    quote:'そこは星空。吹き抜けになっていて、下は水が張られて、星空をキラキラと反射している。言語でその美しさを表現することが……できない。そこでリアルゴールドは笑っていて。',
+    relations:['roof_zone','water_surface','science_zone','b1f_zone']
+  },
+  science_zone: {
+    name:'3F 理科室・理科準備室・隠し森', color:'#8cc99c',
+    layer:'建物層3F — 安息と隠れた自然',
+    meaning:'理科準備室はこの世界で最初の「晴れた一室」——夜の学校で唯一外の光が差す場所（作品1）。黒服の君がうとうとする。一方、理科室の奥の森（作品2）は物理的な建物の外側に拡張する空間——現実の法則を超えた自然。ピアノに隠された入口は、音楽（リアルゴールドの琴）と自然（森）が繋がっていることを示す。',
+    atmo:'準備室：やさしい風。微かに花の匂い。晴れているのに夜。静かな奇跡。隠し森：湿った土の匂い。緑の暗さ。現実の街（ミニストップ）が共存する超現実。',
+    quote:'あれ…？晴れてる。この部屋の窓だけ。やさしい風が吹いてる。心地よい。／理科室の奥ってちょっとした森があるんですよね。ピアノに隠されてるけど。',
+    relations:['lib_zone','floor2_zone','forest_detail']
+  },
+  floor2_zone: {
+    name:'2F 各教室・「でかい目」', color:'#c97b7b',
+    layer:'建物層2F — 深層の恐怖',
+    meaning:'ベチャベチャの教室、机もない教室、普通の教室……教室の状態は記憶や感情の断片の整理状態を示す。そして「でかい目！！怖かった」という深層に潜む何かがいる。直視できない恐怖の根源。語り手と君がすぐに退く——この階より上（3F・4F）は安息と美があるのに、2Fにだけ「見てはいけないもの」がある。抑圧された記憶のトラウマ的核心かもしれない。',
+    atmo:'各教室が異なる：水浸しの冷たさ、完全な空虚、不自然な普通さ。廊下の一角にでかい目の領域がある。',
+    quote:'でかい目！！怖かった…大丈夫？うん、大丈夫。なんだったんだろうね、怖いね。組、窓が空いててベチャベチャになってる。寒いね。',
+    relations:['science_zone','floor1_zone']
+  },
+  floor1_zone: {
+    name:'1F 玄関・事務室・教室群', color:'#c9b46a',
+    layer:'建物層1F — 探索の始まりと聖域',
+    meaning:'玄関から扉が開かない——出口探しの始まり。エレベーターは動かない——機能が失われた垂直移動手段。事務室には神棚があり、唯一「ちょっと暖かい心地」がする聖域。一年の教室には手紙の箱（空色の4組）と鍵があった——物語の最初の謎が生まれる場所。花子さん的存在が現れるのも1Fの廊下——語り手の影が最初に外在化される場所。',
+    atmo:'雨の音。ベトベトした湿気。電気のない暗さ。事務室だけ少し暖かい。廊下にカバの足音が響く。',
+    quote:'玄関。知らないけど知っている。雨。ベトベトしている。扉が開かない。まあ、そうだよね。出口を探そう。右手にはエレベーターと、奥に事務室。',
+    relations:['b1f_zone','floor2_zone','tunnel_under']
+  },
+  b1f_zone: {
+    name:'B1F 地下・015号室・水路', color:'#5a5a7a',
+    layer:'建物層B1F → 地下層',
+    meaning:'015号室は電気なし・大量の中学一年生の声・カバの増殖という最も追い詰められた場所。しかし奥扉を開ければ図書室（美）に繋がる——最も危機的な場所が直接美に繋がるという逆説。水路はカバを誘い去らせる一時的な解放装置。地下通路は駅へ、つまり片道切符の旅の物理的な出発点へ繋がる。B1Fは全ての物語の地理的基点。',
+    atmo:'完全な暗闇。遠くで水が流れる音。床の振動。心臓の音が建物全体に響く気がする。',
+    quote:'ここは015だし、暗なのに、向こうから来る。あ、なんだ。奥の扉で向こうの部屋に逃げれるじゃん。地面が揺れて、水の音がした。彼らは水の元に歩いて行った。',
+    relations:['floor1_zone','tunnel_under','water_pipe','lib_zone']
+  },
+  b2_gym: {
+    name:'二号館', color:'#b08cc9',
+    layer:'建物層 — 怪異の隣接建物',
+    meaning:'「二号館って昼休みでも幽霊出るんですよ」——昼でも幽霊が出る、つまり時間に関係なく超自然が侵食している建物。本館とは渡り廊下で接続。生徒会室には着火具があり、着火剤を撒いた後に取りに行こうとした（火をつけるものを持っていなかった）——変革の試みが常に不完全に終わる象徴。幽霊の正体は不明だが、除霊しなきゃダメ、と語り手は思っている——しかし除霊はされない。',
+    atmo:'昼でも薄暗い。廊下に足音が聞こえるが誰もいない。冷気が漂う。ロッカーの間から気配がする。生徒会室だけ現実的な物品（着火具）がある。',
+    quote:'二号館って昼休みでも幽霊出るんですよ。なんで気がついたらわ、虎ですね。ちゃんと除霊しなきゃダメで。火をつけるのを持ってないじゃないですか！生徒会室にあるかな？',
+    relations:['gym_detail','school_main','forest_detail']
+  },
+  gym_detail: {
+    name:'体育館（後夜祭会場）', color:'#b8c96a',
+    layer:'建物層 — 芸術の坩堝・選択の場',
+    meaning:'飛龍祭405日目——1年以上続く異常な文化祭。語り手は照明係（2Fギャラリー）から全てを見下ろす特等席。5団体のパフォーマンスを通じて蛾（彼）とリアルゴールドの対立が鮮明になる。「照明のコンセントを切る。今日が終わる」——照明を消すことで祭りを終わらせる権限を語り手が持っている。翌朝、観客席の最前列で誰もいない舞台を見ている——全ての選択が終わった後の静寂。',
+    atmo:'祭りの熱気と汗の匂い。スポットライトが当たる場所と影が交互に続く。2Fは暑くて寒い。夜が終わると静寂だけが残る。',
+    quote:'私は照明を担当していた。2階のスポット係は暑いし、寒い。照明のコンセントを切る。今日が終わる。翌朝、私がいたのは観客席の最前列だった。誰も登っていない舞台を、ただ見ている。',
+    relations:['b2_gym','school_main','grass']
+  },
+  forest_detail: {
+    name:'隠し森（3Fレベル）', color:'#7ac9c0',
+    layer:'建物層3F 北側外延 — 現実を超えた自然',
+    meaning:'「理科室の奥ってちょっとした森があるんですよね。ピアノに隠されてるけど。たしか16期の時？の理科部が作ったやつ」——学校の歴史が作り出した超現実的な空間。オランウータン・カエル・虎（李徴）が共存する。ミニストップが営業中——現実の商業空間が異空間の中で平然と機能している。ピアノが入口——音楽（美・創作）を通じてのみ入れる空間。着火剤を撒こうとしたが火がなかった——変革への試みの象徴的失敗。',
+    atmo:'湿った土と葉の匂い。木漏れ日のような光（光源は不明）。ミニストップの電灯だけが人工的。虎の息遣いが聞こえる。赤いカエルは触れない。',
+    quote:'理科室の奥ってちょっとした森があるんですよね。ピアノに隠されてるけど。そう、全然オランウータンとかもいて。森の中に入ると、ミニストップが営業しています。',
+    relations:['science_zone','b2_gym','school_main']
+  },
+  grass: {
+    name:'人工芝グラウンド', color:'#6a9a6a',
+    layer:'地上層 — 最終対話の場',
+    meaning:'「人工芝で寝そべった時、君は不愉快な顔をしていた。全身土まみれだったんだもの」——4章チューリップの舞台。「生きることの意味を探したいの」「嘘つき最悪」という最も直接的な対話が行われる場所。人工（artificial）の芝——本物の自然ではなく、人間が作った緑。それでも寝そべることができる。最終回答「いみのないことをゆるして、いみのない霧に触れるの」はここで導かれる。チューリップたちが揺れるのをやめてしまう場所でもある。',
+    atmo:'昼か夕方。人工芝の硬さ。土が混じっている。全身が少し汚れる。空が見える。チューリップが風に揺れていたが、止まった。',
+    quote:'人工芝で寝そべった時、君は不愉快な顔をしていた。全身土まみれだったんだもの。「生きることの意味を探したいの」「嘘つき最悪」',
+    relations:['gym_detail','school_main','floor1_zone']
+  },
+  school_main: {
+    name:'夜の学校（本館）', color:'#7a8898',
+    layer:'建物層 — 語り手の内的宇宙全体',
+    meaning:'両作品の主舞台。「通えていない学校」——現実には帰属していない場所。B1Fの地下水路から屋上の死の縁まで、垂直に展開する語り手の精神地図。縦断図で全てのフロアの意味を確認してください。',
+    atmo:'雨と暗闇。電気がつかない場所が多い。一部だけ光がある。静寂と物音が交互に来る。',
+    quote:'雨、詣り学校だ。私が通えていない学校だ。夜。玄関。知らないけど知っている。',
+    relations:['b1f_zone','floor1_zone','floor2_zone','science_zone','lib_zone','roof_zone']
+  }
+};
+
+function showInfo(id) {
+  const d = INFO[id];
+  if (!d) return;
+  const body = document.getElementById('panelBody');
+  const rels = (d.relations || []).map(r => {
+    const rd = INFO[r];
+    if (!rd) return '';
+    return `<span class="rel-tag" onclick="showInfo('${r}')" style="color:${rd.color};border-color:${rd.color}40">${rd.name}</span>`;
+  }).join('');
+  
+  body.innerHTML = `
+    <div class="p-name" style="color:${d.color}">${d.name}</div>
+    <div class="p-layer" style="color:${d.color};border-color:${d.color}60">${d.layer}</div>
+    <div class="p-meaning">${d.meaning}</div>
+    <div class="p-atmo-lbl">雰囲気・空気感</div>
+    <div class="p-atmo">${d.atmo}</div>
+    ${d.quote ? `<div class="p-quote">「${d.quote}」</div>` : ''}
+    ${rels ? `<div class="p-relation"><div class="p-relation-title">関連する場所</div>${rels}</div>` : ''}
+  `;
+  
+  // Highlight selected node
+  document.querySelectorAll('.loc-node').forEach(n => n.style.opacity = n.dataset.id === id ? '1' : '0.6');
+}
+
+let currentView = 'vertical';
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('vmap').classList.toggle('hidden', v !== 'vertical');
+  document.getElementById('hmap').classList.toggle('hidden', v !== 'horizontal');
+  document.getElementById('btn-v').classList.toggle('active', v === 'vertical');
+  document.getElementById('btn-h').classList.toggle('active', v === 'horizontal');
+  document.getElementById('panelBody').innerHTML = '<div class="panel-empty">場所をクリックすると<br>詳細が表示されます。</div>';
+  document.querySelectorAll('.loc-node').forEach(n => n.style.opacity = '1');
+}
+</script>
+
+</body>
+</html>
